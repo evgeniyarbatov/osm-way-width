@@ -1,8 +1,10 @@
-# GPX OSM Way Width
+# OSM Way Width
 
-Width is a useful property of OSM ways. The wider the way, the more pleasant it is for walking. However, width is not know or available in most cases. This is an attempt to use multiple GPX files to approximate width.
+Width is a useful property of OSM ways. This is an attempt to use multiple polylines to approximate width.
 
-## Width estimation workflow
+<img width="2400" height="808" alt="width_segments" src="https://github.com/user-attachments/assets/23adc72e-b62c-4ec4-981c-2b121b83ff19" />
+
+## Workflow
 
 1. Load the OSM way from `osm/way.osm` and build a polyline.
 2. Decode all polyline files in `data/polylines` into points.
@@ -16,16 +18,30 @@ Width is a useful property of OSM ways. The wider the way, the more pleasant it 
 
 ## Outputs
 
-- `data/width_points.csv`: per-point distances, nearest points, and whether the point was kept.
-- `data/width_summary.json`: per-file widths plus overall mean/median and confidence interval.
+- `data/width_summary.json`: per-file widths plus overall mean/median, confidence interval, and total polyline count.
 - `data/width_segments.csv`: local widths per 10 m segment.
 - `data/width_segments.png`: plot of the way, segment widths, labels, and basemap.
 
+## Inputs
+
+- `osm/way.osm`: the target OSM way segment.
+- `data/polylines/*.json`: JSON arrays of encoded polylines representing GPX tracks.
+
+## Scripts
+
+- `scripts/extract_way_segment.py`: extracts an OSM way segment into `osm/way.osm` and prints a buffered bbox GeoJSON for GPX collection.
+- `scripts/estimate_way_width.py`: computes per-file widths using a MAD filter and percentile width estimate, then writes `data/width_summary.json`.
+- `scripts/segment_way_width.py`: computes local widths per segment and renders `data/width_segments.png`.
+
 ## Run
+
+Get overall way width:
 
 ```
 make width
 ```
+
+Get segment width and make plot:
 
 ```
 make segments

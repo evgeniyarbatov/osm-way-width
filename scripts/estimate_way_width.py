@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import bisect
-import csv
 import json
 import math
 import sys
@@ -49,7 +48,8 @@ def signed_distance(
     line: LineString,
     line_coords: list[tuple[float, float]],
     seg_ends: list[float],
-) -> tuple[float, Point]:
+) -> float:
+    # Compute signed perpendicular distance using the local segment orientation.
     dist_along = line.project(point)
     nearest = line.interpolate(dist_along)
     idx = bisect.bisect_left(seg_ends, dist_along)
@@ -68,7 +68,7 @@ def signed_distance(
         sign = -1.0
     else:
         sign = 0.0
-    return sign * point.distance(nearest), nearest
+    return sign * point.distance(nearest)
 
 
 def load_polylines(path: Path) -> list[list[tuple[float, float]]]:
@@ -77,56 +77,39 @@ def load_polylines(path: Path) -> list[list[tuple[float, float]]]:
 
 
 def main() -> int:
-    if len(sys.argv) != 5:
-        print(
-            "usage: estimate_way_width.py OSM_WAY.osm POLYLINE_DIR OUTPUT_POINTS.csv OUTPUT_SUMMARY.json"
-        )
+    if len(sys.argv) != 4:
+        print("usage: estimate_way_width.py OSM_WAY.osm POLYLINE_DIR OUTPUT_SUMMARY.json")
         return 1
 
     osm_path = Path(sys.argv[1])
     polyline_dir = Path(sys.argv[2])
-    points_csv = Path(sys.argv[3])
-    summary_json = Path(sys.argv[4])
+    summary_json = Path(sys.argv[3])
 
+    # Project the OSM way to a local UTM zone for metric calculations.
     line_wgs84 = read_way_line(osm_path)
     to_utm = utm_transformer(line_wgs84)
     line_utm = transform(to_utm.transform, line_wgs84)
     line_coords = list(line_utm.coords)
     seg_ends = cumulative_segment_lengths(line_coords)
 
-    all_rows = []
     per_file = []
     widths = []
+    polylines_used = 0
 
     for poly_path in sorted(polyline_dir.glob("*.json")):
-        file_rows = []
         distances = []
         polylines = load_polylines(poly_path)
-        for poly_idx, points in enumerate(polylines):
-            for point_idx, (lat, lon) in enumerate(points):
+        polylines_used += len(polylines)
+        for points in polylines:
+            for lat, lon in points:
                 x, y = to_utm.transform(lon, lat)
                 point_utm = Point(x, y)
-                signed, nearest = signed_distance(point_utm, line_utm, line_coords, seg_ends)
-                file_rows.append(
-                    {
-                        "source_file": poly_path.name,
-                        "polyline_index": poly_idx,
-                        "point_index": point_idx,
-                        "lon": lon,
-                        "lat": lat,
-                        "x": x,
-                        "y": y,
-                        "nearest_x": nearest.x,
-                        "nearest_y": nearest.y,
-                        "signed_distance_m": signed,
-                        "abs_distance_m": abs(signed),
-                    }
-                )
-                distances.append(signed)
+                distances.append(signed_distance(point_utm, line_utm, line_coords, seg_ends))
 
         dist_arr = np.array(distances)
         median = float(np.median(dist_arr))
         mad = float(np.median(np.abs(dist_arr - median)))
+        # Keep points within 3 * MAD, then estimate width from the 5th to 95th percentile.
         if mad > 0:
             keep_mask = np.abs(dist_arr - median) <= 3 * mad
         else:
@@ -135,16 +118,11 @@ def main() -> int:
         kept_abs = np.abs(dist_arr[keep_mask])
         p5, p95 = np.percentile(kept_abs, [5, 95])
         width = float(p95 - p5)
-
-        for row, keep in zip(file_rows, keep_mask):
-            row["kept"] = bool(keep)
-
-        all_rows.extend(file_rows)
         widths.append(width)
         per_file.append(
             {
                 "source_file": poly_path.name,
-                "points_total": int(len(dist_arr)),
+                "points_total": int(dist_arr.size),
                 "points_kept": int(keep_mask.sum()),
                 "median_signed_m": median,
                 "mad_m": mad,
@@ -165,6 +143,7 @@ def main() -> int:
         },
         "overall": {
             "files_used": int(len(widths_arr)),
+            "polylines_used": int(polylines_used),
             "width_mean_m": float(np.mean(widths_arr)),
             "width_median_m": float(np.median(widths_arr)),
             "width_ci_low_m": float(ci_low),
@@ -173,29 +152,7 @@ def main() -> int:
         "per_file": per_file,
     }
 
-    points_csv.parent.mkdir(parents=True, exist_ok=True)
     summary_json.parent.mkdir(parents=True, exist_ok=True)
-
-    with points_csv.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "source_file",
-                "polyline_index",
-                "point_index",
-                "lon",
-                "lat",
-                "x",
-                "y",
-                "nearest_x",
-                "nearest_y",
-                "signed_distance_m",
-                "abs_distance_m",
-                "kept",
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(all_rows)
 
     summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary["overall"], indent=2))
