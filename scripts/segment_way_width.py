@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Compute width per segment and render a map image."""
 import csv
-import json
 import math
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import contextily as ctx
@@ -14,38 +12,11 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-import polyline
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
 
-
-def read_way_line(path: Path) -> LineString:
-    # Load the target way as a LineString in WGS84.
-    tree = ET.parse(path)
-    root = tree.getroot()
-    nodes = {
-        node.get("id"): (float(node.get("lon")), float(node.get("lat")))
-        for node in root.findall("node")
-    }
-    way = root.find("way")
-    refs = [nd.get("ref") for nd in way.findall("nd")]
-    coords = [nodes[ref] for ref in refs]
-    return LineString(coords)
-
-
-def utm_crs(line: LineString) -> CRS:
-    # Pick a local UTM CRS based on the line centroid.
-    centroid = line.centroid
-    zone = int((centroid.x + 180) // 6) + 1
-    epsg = 32600 + zone if centroid.y >= 0 else 32700 + zone
-    return CRS.from_epsg(epsg)
-
-
-def load_polylines(path: Path) -> list[list[tuple[float, float]]]:
-    # Each JSON file is a list of encoded polylines.
-    encoded = json.loads(path.read_text(encoding="utf-8"))
-    return [polyline.decode(item) for item in encoded]
+from way_width_utils import WayWidthUtils
 
 
 def signed_distance(point: Point, line: LineString) -> tuple[float, float]:
@@ -83,8 +54,8 @@ def main() -> int:
     segment_length = float(sys.argv[5])
 
     # Project the way to UTM (for meters) and Web Mercator (for tiles).
-    line_wgs84 = read_way_line(osm_path)
-    utm = utm_crs(line_wgs84)
+    line_wgs84 = WayWidthUtils.read_way_line(osm_path)
+    utm = WayWidthUtils.utm_crs(line_wgs84)
     to_utm = Transformer.from_crs(CRS.from_epsg(4326), utm, always_xy=True)
     to_web = Transformer.from_crs(utm, CRS.from_epsg(3857), always_xy=True)
     line_utm = transform(to_utm.transform, line_wgs84)
@@ -95,7 +66,7 @@ def main() -> int:
     segments: list[list[float]] = [[] for _ in range(segment_count)]
 
     for poly_path in sorted(polyline_dir.glob("*.json")):
-        polylines = load_polylines(poly_path)
+        polylines = WayWidthUtils.load_polylines(poly_path)
         for points in polylines:
             for lat, lon in points:
                 x, y = to_utm.transform(lon, lat)

@@ -44,3 +44,6 @@ width:
 
 segments:
 	@$(PYTHON) scripts/segment_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_SEGMENTS) $(WIDTH_SEGMENTS_PNG) $(SEGMENT_LENGTH)
+
+test:
+	@$(PYTHON) -m unittest discover -s tests

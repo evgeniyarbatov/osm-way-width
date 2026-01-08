@@ -3,40 +3,17 @@ import bisect
 import json
 import math
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
-import polyline
-from pyproj import CRS, Transformer
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
+
+from way_width_utils import WayWidthUtils
 
 MAD_MULTIPLIER = 3
 WIDTH_PERCENTILES = (5, 95)
 CONFIDENCE_INTERVAL_PERCENTILES = (2.5, 97.5)
-
-
-def read_way_line(path: Path) -> LineString:
-    # Load the target way as a LineString in WGS84.
-    tree = ET.parse(path)
-    root = tree.getroot()
-    nodes = {
-        node.get("id"): (float(node.get("lon")), float(node.get("lat")))
-        for node in root.findall("node")
-    }
-    way = root.find("way")
-    refs = [nd.get("ref") for nd in way.findall("nd")]
-    coords = [nodes[ref] for ref in refs]
-    return LineString(coords)
-
-
-def utm_transformer(line: LineString) -> Transformer:
-    # Pick a local UTM zone based on the line centroid.
-    centroid = line.centroid
-    zone = int((centroid.x + 180) // 6) + 1
-    epsg = 32600 + zone if centroid.y >= 0 else 32700 + zone
-    return Transformer.from_crs(CRS.from_epsg(4326), CRS.from_epsg(epsg), always_xy=True)
 
 
 def cumulative_segment_lengths(coords: list[tuple[float, float]]) -> list[float]:
@@ -78,12 +55,6 @@ def signed_distance(
     return sign * point.distance(nearest)
 
 
-def load_polylines(path: Path) -> list[list[tuple[float, float]]]:
-    # Each JSON file is a list of encoded polylines.
-    encoded = json.loads(path.read_text(encoding="utf-8"))
-    return [polyline.decode(item) for item in encoded]
-
-
 def main() -> int:
     if len(sys.argv) != 4:
         print("usage: estimate_way_width.py OSM_WAY.osm POLYLINE_DIR OUTPUT_SUMMARY.json")
@@ -94,8 +65,8 @@ def main() -> int:
     summary_json = Path(sys.argv[3])
 
     # Project the OSM way to a local UTM zone for metric calculations.
-    line_wgs84 = read_way_line(osm_path)
-    to_utm = utm_transformer(line_wgs84)
+    line_wgs84 = WayWidthUtils.read_way_line(osm_path)
+    to_utm = WayWidthUtils.utm_transformer(line_wgs84)
     line_utm = transform(to_utm.transform, line_wgs84)
     line_coords = list(line_utm.coords)
     seg_ends = cumulative_segment_lengths(line_coords)
@@ -106,7 +77,7 @@ def main() -> int:
     # Compute a width estimate for each file, then aggregate across files.
     for poly_path in sorted(polyline_dir.glob("*.json")):
         distances = []
-        polylines = load_polylines(poly_path)
+        polylines = WayWidthUtils.load_polylines(poly_path)
         polylines_used += len(polylines)
         for points in polylines:
             for lat, lon in points:

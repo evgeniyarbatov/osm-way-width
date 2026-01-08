@@ -41,5 +41,5 @@ make segments
 5. Remove GPS noise by discarding points farther than `3 * MAD` (median absolute deviation) from the median signed distance.
 6. Estimate width per file as `p95(abs_distance) - p5(abs_distance)`.
 7. Aggregate widths across files and report mean/median with a percentile-based confidence interval.
-8. Segment the way into 10 m chunks and compute local widths with the same robust method.
+8. Segment the way into 10 m chunks and compute local widths with the same method.
 9. Plot the OSM way, local width segments, labels, and an OSM basemap for context.
