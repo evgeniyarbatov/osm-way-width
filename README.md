@@ -29,8 +29,8 @@ make segments
 - `country`: download the country OSM extract into `osm/`.
 - `area`: cut the boundary polygon into `osm/times-city.osm`.
 - `way`: extract the target way segment into `osm/way.osm`.
-- `width`: compute `data/width_summary.json`.
-- `segments`: compute `data/width_segments.csv` and `data/width_segments.png`
+- `width`: compute overall way width
+- `segments`: compute width for each segment
 
 ## Workflow
 
