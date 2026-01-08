@@ -24,9 +24,8 @@ Width is a useful property of OSM ways. This uses multiple GPX polylines to appr
 
 ## With Your Own Data
 
-1. Put your encoded polylines in `data/polylines`.
+1. Put your encoded polylines in `data/polylines` (`POLYLINE_DIR` in `Makefile`).
    - Each file is JSON containing a list of encoded polylines (Google polyline format).
-   - If you want a different folder, update `POLYLINE_DIR` in `Makefile`.
 2. Update the OSM extract settings in `Makefile`.
    - Set `OSM_URL` to your Geofabrik (or other) `.osm.pbf` extract.
    - Replace `BOUNDARY_POLY` with your `.poly` boundary file.
