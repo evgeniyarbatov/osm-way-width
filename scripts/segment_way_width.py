@@ -199,7 +199,7 @@ def main() -> int:
     ctx.add_basemap(
         ax,
         crs="EPSG:3857",
-        source=ctx.providers.OpenStreetMap.Mapnik,
+        source=ctx.providers.CartoDB.PositronNoLabels,
         alpha=0.9,
         attribution="",
         attribution_size=0,
@@ -209,6 +209,8 @@ def main() -> int:
     line_x, line_y = line_web.xy
     ax.plot(line_x, line_y, color="black", linewidth=2, label="OSM way", zorder=3)
 
+    valid_widths = [width for width in widths if not math.isnan(width) and width > 0]
+    vmax = max(valid_widths) if valid_widths else 1.0
     label_positions = []
     for (mid_x, mid_y), width, row in zip(midpoints, widths, rows):
         if math.isnan(width) or width == 0:
@@ -225,7 +227,7 @@ def main() -> int:
         nx = -dy / length
         ny = dx / length
         half = width / 2
-        color = "#d81e5b"
+        color = plt.cm.viridis(min(width / vmax, 1.0))
         start_x, start_y = to_web.transform(mid_x - nx * half, mid_y - ny * half)
         end_x, end_y = to_web.transform(mid_x + nx * half, mid_y + ny * half)
         ax.plot(
