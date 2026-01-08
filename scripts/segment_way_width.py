@@ -167,6 +167,9 @@ def main() -> int:
         )
         widths.append(width)
 
+    median_width = float(np.nanmedian(np.array(widths)))
+    print(f"median_width_m: {median_width}")
+
     segment_csv.parent.mkdir(parents=True, exist_ok=True)
     out_png.parent.mkdir(parents=True, exist_ok=True)
 

@@ -2,7 +2,7 @@
 
 Width is a useful property of OSM ways. This uses multiple GPX polylines to approximate width when it is missing.
 
-## Estimated Width (~10 meters)
+## Estimated Width (~11 meters)
 
 <img width="2400" height="808" alt="estimated width" src="https://github.com/user-attachments/assets/23adc72e-b62c-4ec4-981c-2b121b83ff19" />
 
