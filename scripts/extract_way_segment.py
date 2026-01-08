@@ -103,7 +103,7 @@ def main() -> int:
     write_way(out_path, segment_refs, node_xml, way_attribs, way_tags)
 
     line = LineString([node_coords[ref] for ref in segment_refs])
-    geojson = bbox_geojson_from_line(line, 20)
+    geojson = bbox_geojson_from_line(line, 15)
     print(f"bbox_geojson = {geojson}")
     return 0
 
