@@ -1,6 +1,6 @@
 # OSM Way Width
 
-Width is a useful property of OSM ways. These scripts use multiple polylines from Strava running activies to estimate width of a single OSM way.
+These scripts use multiple polylines from Strava running activies to estimate width of a single OSM way.
 
 ## Estimated Width (~11 meters)
 
