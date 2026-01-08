@@ -10,28 +10,6 @@ Width is a useful property of OSM ways. This uses multiple GPX polylines to appr
 
 <img width="1538" height="841" alt="actual width" src="https://github.com/user-attachments/assets/8ea5b3b4-e8fc-4039-9639-093057240b4a" />
 
-## Run
-
-Get overall way width:
-
-```
-make width
-```
-
-Get segment width and make plot:
-
-```
-make segments
-```
-
-## Makefile targets
-
-- `country`: download the country OSM extract into `osm/`.
-- `area`: cut the boundary polygon into `osm/times-city.osm`.
-- `way`: extract the target way segment into `osm/way.osm`.
-- `width`: compute overall way width
-- `segments`: compute width for each segment
-
 ## Workflow
 
 1. Load the OSM way from `osm/way.osm` and build a polyline.
