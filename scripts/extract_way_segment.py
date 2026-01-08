@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
+import json
 import sys
 import xml.etree.ElementTree as ET
+
+from pyproj import CRS, Transformer
+from shapely.geometry import LineString, box, mapping
+from shapely.ops import transform
 
 
 def main() -> int:
@@ -39,9 +44,13 @@ def main() -> int:
 
     needed_nodes = set(segment_refs)
     node_xml = {}
+    node_coords = {}
     for _, elem in ET.iterparse(in_path, events=("end",)):
         if elem.tag == "node" and elem.get("id") in needed_nodes:
             node_xml[elem.get("id")] = ET.tostring(elem, encoding="unicode")
+            lat = float(elem.get("lat"))
+            lon = float(elem.get("lon"))
+            node_coords[elem.get("id")] = (lon, lat)
         elem.clear()
 
     with open(out_path, "w", encoding="utf-8") as out:
@@ -60,6 +69,19 @@ def main() -> int:
         out.write("  </way>\n")
         out.write("</osm>\n")
 
+    line = LineString([node_coords[ref] for ref in segment_refs])
+    centroid = line.centroid
+    zone = int((centroid.x + 180) // 6) + 1
+    epsg = 32600 + zone if centroid.y >= 0 else 32700 + zone
+    wgs84 = CRS.from_epsg(4326)
+    utm = CRS.from_epsg(epsg)
+    to_utm = Transformer.from_crs(wgs84, utm, always_xy=True)
+    to_wgs84 = Transformer.from_crs(utm, wgs84, always_xy=True)
+    line_utm = transform(to_utm.transform, line)
+    bbox_utm = box(*line_utm.buffer(20).bounds)
+    bbox_wgs84 = transform(to_wgs84.transform, bbox_utm)
+    geojson = json.dumps(mapping(bbox_wgs84), separators=(",", ":"))
+    print(f"bbox_geojson = {geojson}")
     return 0
 
 
