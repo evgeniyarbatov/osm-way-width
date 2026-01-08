@@ -14,6 +14,10 @@ WAY_ID = 1124683045
 WAY_START_NODE = 10284859794
 WAY_END_NODE = 10284859797
 
+POLYLINE_DIR = data/polylines
+WIDTH_POINTS = data/width_points.csv
+WIDTH_SUMMARY = data/width_summary.json
+
 venv:
 	@python3 -m venv $(VENV_PATH)
 
@@ -30,5 +34,8 @@ area:
 	@osmconvert $(OSM_DIR)/$(COUNTRY_OSM_FILE) -B=$(BOUNDARY_POLY) -o=$(OSM_DIR)/times-city.osm.pbf
 	@osmium cat --overwrite $(OSM_DIR)/times-city.osm.pbf -o $(OSM_DIR)/times-city.osm
 
-way: venv
+way:
 	@$(PYTHON) scripts/extract_way_segment.py $(OSM_DIR)/times-city.osm $(OSM_DIR)/way.osm $(WAY_ID) $(WAY_START_NODE) $(WAY_END_NODE)
+
+width:
+	@$(PYTHON) scripts/estimate_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_POINTS) $(WIDTH_SUMMARY)
