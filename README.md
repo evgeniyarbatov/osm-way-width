@@ -2,7 +2,13 @@
 
 Width is a useful property of OSM ways. This uses multiple GPX polylines to approximate width when it is missing.
 
-<img width="2400" height="808" alt="width_segments" src="https://github.com/user-attachments/assets/23adc72e-b62c-4ec4-981c-2b121b83ff19" />
+## Estimated Width (~10 meters)
+
+<img width="2400" height="808" alt="estimated width" src="https://github.com/user-attachments/assets/23adc72e-b62c-4ec4-981c-2b121b83ff19" />
+
+## Actual Width (13 meters)
+
+<img width="1538" height="841" alt="actual width" src="https://github.com/user-attachments/assets/8ea5b3b4-e8fc-4039-9639-093057240b4a" />
 
 ## Workflow
 
