@@ -167,25 +167,49 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(rows)
 
-    fig, ax = plt.subplots(figsize=(8, 8))
     line_web = transform(to_web.transform, line_utm)
-    minx, miny, maxx, maxy = line_web.bounds
-    pad_x = (maxx - minx) * 0.1
-    pad_y = (maxy - miny) * 0.1
-    ax.set_xlim(minx - pad_x, maxx + pad_x)
-    ax.set_ylim(miny - pad_y, maxy + pad_y)
+    minx_utm, miny_utm, maxx_utm, maxy_utm = line_utm.bounds
+    buffer_m = 50.0
+    minx_utm -= buffer_m
+    miny_utm -= buffer_m
+    maxx_utm += buffer_m
+    maxy_utm += buffer_m
+    corners_web = [
+        to_web.transform(minx_utm, miny_utm),
+        to_web.transform(minx_utm, maxy_utm),
+        to_web.transform(maxx_utm, miny_utm),
+        to_web.transform(maxx_utm, maxy_utm),
+    ]
+    minx = min(x for x, _ in corners_web)
+    maxx = max(x for x, _ in corners_web)
+    miny = min(y for _, y in corners_web)
+    maxy = max(y for _, y in corners_web)
+    span_x = maxx - minx
+    span_y = maxy - miny
+    base = 8.0
+    if span_x >= span_y:
+        fig_w = base
+        fig_h = base * (span_y / span_x) if span_x else base
+    else:
+        fig_h = base
+        fig_w = base * (span_x / span_y) if span_y else base
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.set_xlim(minx, maxx)
+    ax.set_ylim(miny, maxy)
     ctx.add_basemap(
         ax,
         crs="EPSG:3857",
         source=ctx.providers.OpenStreetMap.Mapnik,
-        alpha=0.8,
+        alpha=0.9,
+        attribution="",
+        attribution_size=0,
         zorder=0,
     )
 
     line_x, line_y = line_web.xy
     ax.plot(line_x, line_y, color="black", linewidth=2, label="OSM way", zorder=3)
 
-    vmax = np.nanmax(widths) if any(not math.isnan(w) for w in widths) else 1.0
+    label_positions = []
     for (mid_x, mid_y), width, row in zip(midpoints, widths, rows):
         if math.isnan(width) or width == 0:
             continue
@@ -201,7 +225,7 @@ def main() -> int:
         nx = -dy / length
         ny = dx / length
         half = width / 2
-        color = plt.cm.viridis(min(width / vmax, 1.0))
+        color = "#d81e5b"
         start_x, start_y = to_web.transform(mid_x - nx * half, mid_y - ny * half)
         end_x, end_y = to_web.transform(mid_x + nx * half, mid_y + ny * half)
         ax.plot(
@@ -212,24 +236,28 @@ def main() -> int:
             zorder=4,
         )
 
-        label_x, label_y = to_web.transform(mid_x + nx * (half + 0.5), mid_y + ny * (half + 0.5))
-        ax.text(
-            label_x,
-            label_y,
-            f"{width:.1f} m",
-            fontsize=7,
-            ha="center",
-            va="center",
-            color="black",
-            zorder=5,
-            bbox=dict(facecolor="white", alpha=0.7, edgecolor="none", pad=1),
-        )
+        label_offset = half + 5.0
+        label_x, label_y = to_web.transform(mid_x + nx * label_offset, mid_y + ny * label_offset)
+        label_positions.append((label_x, label_y, width))
 
-    ax.set_aspect("equal", adjustable="datalim")
-    ax.set_xlabel("")
-    ax.set_ylabel("")
-    fig.tight_layout()
-    fig.savefig(out_png, dpi=300)
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_axis_off()
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    if label_positions:
+        aligned_x = max(pos[0] for pos in label_positions)
+        for _, label_y, width in label_positions:
+            ax.text(
+                aligned_x,
+                label_y,
+                f"{width:.1f} m",
+                fontsize=7,
+                ha="left",
+                va="center",
+                color="black",
+                zorder=5,
+                bbox=dict(facecolor="white", alpha=0.7, edgecolor="none", pad=1),
+            )
+    fig.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0)
     return 0
 
 
