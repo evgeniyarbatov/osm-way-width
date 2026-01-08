@@ -17,6 +17,10 @@ WAY_END_NODE = 10284859797
 POLYLINE_DIR = data/polylines
 WIDTH_POINTS = data/width_points.csv
 WIDTH_SUMMARY = data/width_summary.json
+SEGMENT_LENGTH = 10
+WIDTH_SEGMENTS = data/width_segments.csv
+WIDTH_SEGMENTS_PNG = data/width_segments.png
+MPLCONFIGDIR = data/.matplotlib
 
 venv:
 	@python3 -m venv $(VENV_PATH)
@@ -39,3 +43,6 @@ way:
 
 width:
 	@$(PYTHON) scripts/estimate_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_POINTS) $(WIDTH_SUMMARY)
+
+segments:
+	@MPLCONFIGDIR=$(MPLCONFIGDIR) $(PYTHON) scripts/segment_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_SEGMENTS) $(WIDTH_SEGMENTS_PNG) $(SEGMENT_LENGTH)

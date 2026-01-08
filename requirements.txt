@@ -2,3 +2,4 @@ pyproj
 shapely
 numpy
 polyline
+matplotlib
