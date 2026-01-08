@@ -10,6 +10,10 @@ COUNTRY_OSM_FILE = $$(basename $(OSM_URL))
 OSM_DIR = osm
 BOUNDARY_POLY = osm/times-city.poly
 
+WAY_ID = 1124683045
+WAY_START_NODE = 10284859794
+WAY_END_NODE = 10284859797
+
 venv:
 	@python3 -m venv $(VENV_PATH)
 
@@ -22,6 +26,9 @@ country:
 		wget $(OSM_URL) -P $(OSM_DIR); \
 	fi
 
-osmextract:
+area:
 	@osmconvert $(OSM_DIR)/$(COUNTRY_OSM_FILE) -B=$(BOUNDARY_POLY) -o=$(OSM_DIR)/times-city.osm.pbf
 	@osmium cat --overwrite $(OSM_DIR)/times-city.osm.pbf -o $(OSM_DIR)/times-city.osm
+
+way: venv
+	@$(PYTHON) scripts/extract_way_segment.py $(OSM_DIR)/times-city.osm $(OSM_DIR)/way.osm $(WAY_ID) $(WAY_START_NODE) $(WAY_END_NODE)
