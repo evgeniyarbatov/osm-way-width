@@ -6,6 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import contextily as ctx
 import matplotlib
 
 matplotlib.use("Agg")
@@ -31,11 +32,11 @@ def read_way_line(path: Path) -> LineString:
     return LineString(coords)
 
 
-def utm_transformer(line: LineString) -> Transformer:
+def utm_crs(line: LineString) -> CRS:
     centroid = line.centroid
     zone = int((centroid.x + 180) // 6) + 1
     epsg = 32600 + zone if centroid.y >= 0 else 32700 + zone
-    return Transformer.from_crs(CRS.from_epsg(4326), CRS.from_epsg(epsg), always_xy=True)
+    return CRS.from_epsg(epsg)
 
 
 def load_polylines(path: Path) -> list[list[tuple[float, float]]]:
@@ -77,7 +78,9 @@ def main() -> int:
     segment_length = float(sys.argv[5])
 
     line_wgs84 = read_way_line(osm_path)
-    to_utm = utm_transformer(line_wgs84)
+    utm = utm_crs(line_wgs84)
+    to_utm = Transformer.from_crs(CRS.from_epsg(4326), utm, always_xy=True)
+    to_web = Transformer.from_crs(utm, CRS.from_epsg(3857), always_xy=True)
     line_utm = transform(to_utm.transform, line_wgs84)
 
     total_len = line_utm.length
@@ -165,8 +168,22 @@ def main() -> int:
         writer.writerows(rows)
 
     fig, ax = plt.subplots(figsize=(8, 8))
-    line_x, line_y = line_utm.xy
-    ax.plot(line_x, line_y, color="black", linewidth=2, label="OSM way")
+    line_web = transform(to_web.transform, line_utm)
+    minx, miny, maxx, maxy = line_web.bounds
+    pad_x = (maxx - minx) * 0.1
+    pad_y = (maxy - miny) * 0.1
+    ax.set_xlim(minx - pad_x, maxx + pad_x)
+    ax.set_ylim(miny - pad_y, maxy + pad_y)
+    ctx.add_basemap(
+        ax,
+        crs="EPSG:3857",
+        source=ctx.providers.OpenStreetMap.Mapnik,
+        alpha=0.8,
+        zorder=0,
+    )
+
+    line_x, line_y = line_web.xy
+    ax.plot(line_x, line_y, color="black", linewidth=2, label="OSM way", zorder=3)
 
     vmax = np.nanmax(widths) if any(not math.isnan(w) for w in widths) else 1.0
     for (mid_x, mid_y), width, row in zip(midpoints, widths, rows):
@@ -185,21 +202,34 @@ def main() -> int:
         ny = dx / length
         half = width / 2
         color = plt.cm.viridis(min(width / vmax, 1.0))
+        start_x, start_y = to_web.transform(mid_x - nx * half, mid_y - ny * half)
+        end_x, end_y = to_web.transform(mid_x + nx * half, mid_y + ny * half)
         ax.plot(
-            [mid_x - nx * half, mid_x + nx * half],
-            [mid_y - ny * half, mid_y + ny * half],
+            [start_x, end_x],
+            [start_y, end_y],
             color=color,
             linewidth=3,
+            zorder=4,
+        )
+
+        label_x, label_y = to_web.transform(mid_x + nx * (half + 0.5), mid_y + ny * (half + 0.5))
+        ax.text(
+            label_x,
+            label_y,
+            f"{width:.1f} m",
+            fontsize=7,
+            ha="center",
+            va="center",
+            color="black",
+            zorder=5,
+            bbox=dict(facecolor="white", alpha=0.7, edgecolor="none", pad=1),
         )
 
     ax.set_aspect("equal", adjustable="datalim")
-    ax.set_title("Way width by 10 m segments")
-    ax.set_xlabel("UTM Easting (m)")
-    ax.set_ylabel("UTM Northing (m)")
-    ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.4)
+    ax.set_xlabel("")
+    ax.set_ylabel("")
     fig.tight_layout()
-    fig.savefig(out_png, dpi=200)
-    print(f"segments: {segment_count}")
+    fig.savefig(out_png, dpi=300)
     return 0
 
 
