@@ -12,8 +12,13 @@ from pyproj import CRS, Transformer
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
 
+MAD_MULTIPLIER = 3
+WIDTH_PERCENTILES = (5, 95)
+CONFIDENCE_INTERVAL_PERCENTILES = (2.5, 97.5)
+
 
 def read_way_line(path: Path) -> LineString:
+    # Load the target way as a LineString in WGS84.
     tree = ET.parse(path)
     root = tree.getroot()
     nodes = {
@@ -27,6 +32,7 @@ def read_way_line(path: Path) -> LineString:
 
 
 def utm_transformer(line: LineString) -> Transformer:
+    # Pick a local UTM zone based on the line centroid.
     centroid = line.centroid
     zone = int((centroid.x + 180) // 6) + 1
     epsg = 32600 + zone if centroid.y >= 0 else 32700 + zone
@@ -34,6 +40,7 @@ def utm_transformer(line: LineString) -> Transformer:
 
 
 def cumulative_segment_lengths(coords: list[tuple[float, float]]) -> list[float]:
+    # Track cumulative distances so we can map a projected point to its segment.
     total = 0.0
     totals = []
     for start, end in zip(coords, coords[1:]):
@@ -49,7 +56,7 @@ def signed_distance(
     line_coords: list[tuple[float, float]],
     seg_ends: list[float],
 ) -> float:
-    # Compute signed perpendicular distance using the local segment orientation.
+    # Compute signed perpendicular distance (positive = left of way direction).
     dist_along = line.project(point)
     nearest = line.interpolate(dist_along)
     idx = bisect.bisect_left(seg_ends, dist_along)
@@ -72,6 +79,7 @@ def signed_distance(
 
 
 def load_polylines(path: Path) -> list[list[tuple[float, float]]]:
+    # Each JSON file is a list of encoded polylines.
     encoded = json.loads(path.read_text(encoding="utf-8"))
     return [polyline.decode(item) for item in encoded]
 
@@ -92,10 +100,10 @@ def main() -> int:
     line_coords = list(line_utm.coords)
     seg_ends = cumulative_segment_lengths(line_coords)
 
-    per_file = []
     widths = []
     polylines_used = 0
 
+    # Compute a width estimate for each file, then aggregate across files.
     for poly_path in sorted(polyline_dir.glob("*.json")):
         distances = []
         polylines = load_polylines(poly_path)
@@ -106,41 +114,23 @@ def main() -> int:
                 point_utm = Point(x, y)
                 distances.append(signed_distance(point_utm, line_utm, line_coords, seg_ends))
 
+        # Keep points within MAD_MULTIPLIER * MAD, then estimate width from percentiles.
         dist_arr = np.array(distances)
         median = float(np.median(dist_arr))
         mad = float(np.median(np.abs(dist_arr - median)))
-        # Keep points within 3 * MAD, then estimate width from the 5th to 95th percentile.
         if mad > 0:
-            keep_mask = np.abs(dist_arr - median) <= 3 * mad
+            keep_mask = np.abs(dist_arr - median) <= MAD_MULTIPLIER * mad
         else:
             keep_mask = np.ones_like(dist_arr, dtype=bool)
 
         kept_abs = np.abs(dist_arr[keep_mask])
-        p5, p95 = np.percentile(kept_abs, [5, 95])
-        width = float(p95 - p5)
+        low, high = np.percentile(kept_abs, WIDTH_PERCENTILES)
+        width = float(high - low)
         widths.append(width)
-        per_file.append(
-            {
-                "source_file": poly_path.name,
-                "points_total": int(dist_arr.size),
-                "points_kept": int(keep_mask.sum()),
-                "median_signed_m": median,
-                "mad_m": mad,
-                "p5_abs_m": float(p5),
-                "p95_abs_m": float(p95),
-                "width_m": width,
-            }
-        )
 
     widths_arr = np.array(widths)
-    ci_low, ci_high = np.percentile(widths_arr, [2.5, 97.5])
+    ci_low, ci_high = np.percentile(widths_arr, CONFIDENCE_INTERVAL_PERCENTILES)
     summary = {
-        "settings": {
-            "mad_multiplier": 3,
-            "width_percentiles": [5, 95],
-            "confidence_interval_percentiles": [2.5, 97.5],
-            "positive_side": "left_of_way_direction",
-        },
         "overall": {
             "files_used": int(len(widths_arr)),
             "polylines_used": int(polylines_used),
@@ -149,7 +139,6 @@ def main() -> int:
             "width_ci_low_m": float(ci_low),
             "width_ci_high_m": float(ci_high),
         },
-        "per_file": per_file,
     }
 
     summary_json.parent.mkdir(parents=True, exist_ok=True)

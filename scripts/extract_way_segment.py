@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Extract an OSM way segment and print a buffered bbox GeoJSON."""
 import json
 import sys
 import xml.etree.ElementTree as ET
@@ -9,6 +10,7 @@ from shapely.ops import transform
 
 
 def read_way(in_path: str, way_id: str) -> tuple[list[str], list[tuple[str, str]], dict[str, str]] | None:
+    # Stream the file until the target way is found.
     in_target_way = False
     for event, elem in ET.iterparse(in_path, events=("start", "end")):
         if event == "start" and elem.tag == "way" and elem.get("id") == way_id:
@@ -28,6 +30,7 @@ def read_way(in_path: str, way_id: str) -> tuple[list[str], list[tuple[str, str]
 def read_nodes(
     in_path: str, segment_refs: list[str]
 ) -> tuple[dict[str, str], dict[str, tuple[float, float]]]:
+    # Collect only the nodes referenced by the segment.
     needed_nodes = set(segment_refs)
     node_xml: dict[str, str] = {}
     node_coords: dict[str, tuple[float, float]] = {}
@@ -48,6 +51,7 @@ def write_way(
     way_attribs: dict[str, str],
     way_tags: list[tuple[str, str]],
 ) -> None:
+    # Write a small .osm file containing only the segment nodes and way.
     with open(out_path, "w", encoding="utf-8") as out:
         out.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         out.write('<osm version="0.6" generator="extract_way_segment">\n')
@@ -66,6 +70,7 @@ def write_way(
 
 
 def bbox_geojson_from_line(line: LineString, buffer_meters: float) -> str:
+    # Buffer the line in UTM meters, then return a WGS84 GeoJSON bbox.
     centroid = line.centroid
     zone = int((centroid.x + 180) // 6) + 1
     epsg = 32600 + zone if centroid.y >= 0 else 32700 + zone
@@ -93,6 +98,7 @@ def main() -> int:
 
     way_refs, way_tags, way_attribs = way
 
+    # Slice the way between the provided node ids (inclusive).
     start_index = way_refs.index(start_node)
     end_index = way_refs.index(end_node)
     if start_index > end_index:

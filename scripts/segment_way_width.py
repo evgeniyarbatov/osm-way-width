@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Compute width per segment and render a map image."""
 import csv
 import json
 import math
@@ -20,6 +21,7 @@ from shapely.ops import transform
 
 
 def read_way_line(path: Path) -> LineString:
+    # Load the target way as a LineString in WGS84.
     tree = ET.parse(path)
     root = tree.getroot()
     nodes = {
@@ -33,6 +35,7 @@ def read_way_line(path: Path) -> LineString:
 
 
 def utm_crs(line: LineString) -> CRS:
+    # Pick a local UTM CRS based on the line centroid.
     centroid = line.centroid
     zone = int((centroid.x + 180) // 6) + 1
     epsg = 32600 + zone if centroid.y >= 0 else 32700 + zone
@@ -40,11 +43,13 @@ def utm_crs(line: LineString) -> CRS:
 
 
 def load_polylines(path: Path) -> list[list[tuple[float, float]]]:
+    # Each JSON file is a list of encoded polylines.
     encoded = json.loads(path.read_text(encoding="utf-8"))
     return [polyline.decode(item) for item in encoded]
 
 
 def signed_distance(point: Point, line: LineString) -> tuple[float, float]:
+    # Signed perpendicular distance (positive = left of way direction).
     dist_along = line.project(point)
     nearest = line.interpolate(dist_along)
     delta = min(1.0, line.length / 1000)
@@ -77,6 +82,7 @@ def main() -> int:
     out_png = Path(sys.argv[4])
     segment_length = float(sys.argv[5])
 
+    # Project the way to UTM (for meters) and Web Mercator (for tiles).
     line_wgs84 = read_way_line(osm_path)
     utm = utm_crs(line_wgs84)
     to_utm = Transformer.from_crs(CRS.from_epsg(4326), utm, always_xy=True)
@@ -85,6 +91,7 @@ def main() -> int:
 
     total_len = line_utm.length
     segment_count = max(1, math.ceil(total_len / segment_length))
+    # Collect signed distances for each segment along the way.
     segments: list[list[float]] = [[] for _ in range(segment_count)]
 
     for poly_path in sorted(polyline_dir.glob("*.json")):
@@ -137,6 +144,7 @@ def main() -> int:
         else:
             keep_mask = np.ones_like(dist_arr, dtype=bool)
 
+        # Use the 5th-95th percentile range as a robust width estimate.
         kept_abs = np.abs(dist_arr[keep_mask])
         p5, p95 = np.percentile(kept_abs, [5, 95])
         width = float(p95 - p5)
@@ -167,6 +175,7 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(rows)
 
+    # Prepare plotting extents with a small buffer in meters.
     line_web = transform(to_web.transform, line_utm)
     minx_utm, miny_utm, maxx_utm, maxy_utm = line_utm.bounds
     buffer_m = 50.0
