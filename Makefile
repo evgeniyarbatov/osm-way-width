@@ -15,7 +15,6 @@ WAY_START_NODE = 10284859794
 WAY_END_NODE = 10284859797
 
 POLYLINE_DIR = data/polylines
-WIDTH_SUMMARY = data/width_summary.json
 SEGMENT_LENGTH = 10
 WIDTH_SEGMENTS = data/width_segments.csv
 WIDTH_SEGMENTS_PNG = data/width_segments.png
@@ -40,7 +39,7 @@ way:
 	@$(PYTHON) scripts/extract_way_segment.py $(OSM_DIR)/times-city.osm $(OSM_DIR)/way.osm $(WAY_ID) $(WAY_START_NODE) $(WAY_END_NODE)
 
 width:
-	@$(PYTHON) scripts/estimate_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_SUMMARY)
+	@$(PYTHON) scripts/estimate_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR)
 
 segments:
 	@$(PYTHON) scripts/segment_way_width.py $(OSM_DIR)/way.osm $(POLYLINE_DIR) $(WIDTH_SEGMENTS) $(WIDTH_SEGMENTS_PNG) $(SEGMENT_LENGTH)

@@ -56,14 +56,12 @@ def signed_distance(
 
 
 def main() -> int:
-    if len(sys.argv) != 4:
-        print("usage: estimate_way_width.py OSM_WAY.osm POLYLINE_DIR OUTPUT_SUMMARY.json")
+    if len(sys.argv) != 3:
+        print("usage: estimate_way_width.py OSM_WAY.osm POLYLINE_DIR")
         return 1
 
     osm_path = Path(sys.argv[1])
     polyline_dir = Path(sys.argv[2])
-    summary_json = Path(sys.argv[3])
-
     # Project the OSM way to a local UTM zone for metric calculations.
     line_wgs84 = WayWidthUtils.read_way_line(osm_path)
     to_utm = WayWidthUtils.utm_transformer(line_wgs84)
@@ -112,10 +110,7 @@ def main() -> int:
         },
     }
 
-    summary_json.parent.mkdir(parents=True, exist_ok=True)
-
-    summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    print(json.dumps(summary["overall"], indent=2))
+    print(json.dumps(summary, indent=2))
     return 0
 
 
