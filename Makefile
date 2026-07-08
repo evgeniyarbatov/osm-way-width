@@ -20,11 +20,10 @@ WIDTH_SEGMENTS = data/width_segments.csv
 WIDTH_SEGMENTS_PNG = data/width_segments.png
 
 venv:
-	@python3 -m venv $(VENV_PATH)
+	@uv venv $(VENV_PATH)
 
 install: venv
-	@$(PIP) install --disable-pip-version-check -q --upgrade pip
-	@$(PIP) install --disable-pip-version-check -q -r $(REQUIREMENTS)
+	@uv pip install -q -r $(REQUIREMENTS)
 
 
 area:
