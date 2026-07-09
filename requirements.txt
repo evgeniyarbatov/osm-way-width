@@ -1,6 +1,0 @@
-pyproj
-shapely
-numpy
-polyline
-matplotlib
-contextily

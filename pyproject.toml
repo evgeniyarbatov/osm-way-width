@@ -1,0 +1,15 @@
+[project]
+name = "osm-way-width"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pyproj",
+    "shapely",
+    "numpy",
+    "polyline",
+    "matplotlib",
+    "contextily",
+]
+
+[tool.uv]
+package = false
