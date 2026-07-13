@@ -1,7 +1,7 @@
 import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import defusedxml.ElementTree as ET
 import polyline
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString
@@ -13,12 +13,22 @@ class WayWidthUtils:
         # Load the target way as a LineString in WGS84.
         tree = ET.parse(path)
         root = tree.getroot()
-        nodes = {
-            node.get("id"): (float(node.get("lon")), float(node.get("lat")))
-            for node in root.findall("node")
-        }
+        nodes: dict[str, tuple[float, float]] = {}
+        for node in root.findall("node"):
+            node_id, lon, lat = node.get("id"), node.get("lon"), node.get("lat")
+            if node_id is None or lon is None or lat is None:
+                raise ValueError(f"malformed <node> element in {path}")
+            nodes[node_id] = (float(lon), float(lat))
+
         way = root.find("way")
-        refs = [nd.get("ref") for nd in way.findall("nd")]
+        if way is None:
+            raise ValueError(f"no <way> element found in {path}")
+        refs = []
+        for nd in way.findall("nd"):
+            ref = nd.get("ref")
+            if ref is None:
+                raise ValueError(f"malformed <nd> element in {path}")
+            refs.append(ref)
         coords = [nodes[ref] for ref in refs]
         return LineString(coords)
 

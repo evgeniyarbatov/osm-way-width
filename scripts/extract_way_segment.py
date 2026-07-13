@@ -3,8 +3,8 @@
 
 import json
 import sys
-import xml.etree.ElementTree as ET
 
+import defusedxml.ElementTree as ET
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box, mapping
 from shapely.ops import transform

@@ -65,7 +65,7 @@ def main() -> int:
     line_wgs84 = WayWidthUtils.read_way_line(osm_path)
     to_utm = WayWidthUtils.utm_transformer(line_wgs84)
     line_utm = transform(to_utm.transform, line_wgs84)
-    line_coords = list(line_utm.coords)
+    line_coords: list[tuple[float, float]] = [(x, y) for x, y, *_ in line_utm.coords]
     seg_ends = cumulative_segment_lengths(line_coords)
 
     widths = []

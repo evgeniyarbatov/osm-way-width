@@ -240,7 +240,7 @@ def main() -> int:
                 va="center",
                 color="black",
                 zorder=5,
-                bbox=dict(facecolor="white", alpha=0.7, edgecolor="none", pad=1),
+                bbox={"facecolor": "white", "alpha": 0.7, "edgecolor": "none", "pad": 1},
             )
     fig.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0)
     return 0
