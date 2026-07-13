@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
-
 from way_width_utils import WayWidthUtils
 
 MAD_MULTIPLIER = 3
@@ -20,7 +19,7 @@ def cumulative_segment_lengths(coords: list[tuple[float, float]]) -> list[float]
     # Track cumulative distances so we can map a projected point to its segment.
     total = 0.0
     totals = []
-    for start, end in zip(coords, coords[1:]):
+    for start, end in zip(coords, coords[1:], strict=False):
         seg_len = math.hypot(end[0] - start[0], end[1] - start[1])
         total += seg_len
         totals.append(total)

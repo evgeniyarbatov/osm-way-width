@@ -32,7 +32,9 @@ class WayWidthUtils:
 
     @staticmethod
     def utm_transformer(line: LineString) -> Transformer:
-        return Transformer.from_crs(CRS.from_epsg(4326), WayWidthUtils.utm_crs(line), always_xy=True)
+        return Transformer.from_crs(
+            CRS.from_epsg(4326), WayWidthUtils.utm_crs(line), always_xy=True
+        )
 
     @staticmethod
     def load_polylines(path: Path) -> list[list[tuple[float, float]]]:

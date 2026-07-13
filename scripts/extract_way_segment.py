@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Extract an OSM way segment and print a buffered bbox GeoJSON."""
+
 import json
 import sys
 import xml.etree.ElementTree as ET
@@ -9,7 +10,9 @@ from shapely.geometry import LineString, box, mapping
 from shapely.ops import transform
 
 
-def read_way(in_path: str, way_id: str) -> tuple[list[str], list[tuple[str, str]], dict[str, str]] | None:
+def read_way(
+    in_path: str, way_id: str
+) -> tuple[list[str], list[tuple[str, str]], dict[str, str]] | None:
     # Stream the file until the target way is found.
     in_target_way = False
     for event, elem in ET.iterparse(in_path, events=("start", "end")):
@@ -86,7 +89,9 @@ def bbox_geojson_from_line(line: LineString, buffer_meters: float) -> str:
 
 def main() -> int:
     if len(sys.argv) != 6:
-        print("usage: extract_way_segment.py INPUT.osm OUTPUT.osm WAY_ID START_NODE_ID END_NODE_ID")
+        print(
+            "usage: extract_way_segment.py INPUT.osm OUTPUT.osm WAY_ID START_NODE_ID END_NODE_ID"
+        )
         return 1
 
     in_path, out_path, way_id, start_node, end_node = sys.argv[1:]

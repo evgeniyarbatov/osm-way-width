@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Compute width per segment and render a map image."""
+
 import csv
 import math
 import sys
@@ -15,7 +16,6 @@ import numpy as np
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
-
 from way_width_utils import WayWidthUtils
 
 
@@ -195,7 +195,7 @@ def main() -> int:
     valid_widths = [width for width in widths if not math.isnan(width) and width > 0]
     vmax = max(valid_widths) if valid_widths else 1.0
     label_positions = []
-    for (mid_x, mid_y), width, row in zip(midpoints, widths, rows):
+    for (mid_x, mid_y), width, row in zip(midpoints, widths, rows, strict=False):
         if math.isnan(width) or width == 0:
             continue
         mid_m = (row["start_m"] + row["end_m"]) / 2
