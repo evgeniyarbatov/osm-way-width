@@ -3,7 +3,21 @@
 PYTHON := uv run python
 
 OSM_URL = https://download.geofabrik.de/asia/vietnam-latest.osm.pbf
-include $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+
+DOTFILES_MK := $(HOME)/gitRepo/dotfiles/make/osm-country.mk
+
+.PHONY: country osm-country-fetch
+
+ifneq ($(wildcard $(DOTFILES_MK)),)
+include $(DOTFILES_MK)
+else
+COUNTRY_OSM_FILE ?= $(notdir $(OSM_URL))
+
+country osm-country-fetch:
+	@echo "error: '$@' needs evgeniyarbatov/dotfiles (private helper); not found at $(DOTFILES_MK)." >&2
+	@echo "Fetch manually: download $(OSM_URL) into $(OSM_DIR)/$(COUNTRY_OSM_FILE), then retry." >&2
+	@exit 1
+endif
 
 OSM_DIR = osm
 BOUNDARY_POLY = osm/times-city.poly
